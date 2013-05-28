@@ -4,11 +4,9 @@
  * Deploy an application
  */
 
-use Deploy\DeployCommand;
-use Symfony\Component\Console\Application;
+use Deploy\DeployApplication;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$console = new Application();
-$console->add(new DeployCommand());
+$console = new DeployApplication();
 $console->run();

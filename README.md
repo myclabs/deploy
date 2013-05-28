@@ -2,6 +2,14 @@
 
 Deployment scripts
 
+## Usage
+
+```bash
+deploy deploy [-v|--verbose] application version [path]
+```
+
+The deploy command will
+
 ## Installation
 
 Checkout the repository:
@@ -23,10 +31,4 @@ To install globally on the machine (and be able to use `deploy ...`), create a s
 
 ```bash
 sudo ln -s /usr/local/bin/deploy /path/to/project/bin/deploy
-```
-
-## Usage
-
-```bash
-deploy [-v|--verbose] application version [path]
 ```
