@@ -1,0 +1,11 @@
+{
+    "autoload": {
+        "psr-0": {
+            "Deploy": "src/"
+        }
+    },
+	"require": {
+		"php": ">=5.4.0",
+		"symfony/console": "2.*"
+	}
+}

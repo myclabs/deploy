@@ -1,0 +1,14 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Deploy an application
+ */
+
+use Deploy\DeployCommand;
+use Symfony\Component\Console\Application;
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+$console = new Application();
+$console->add(new DeployCommand());
+$console->run();
