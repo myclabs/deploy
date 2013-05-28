@@ -76,6 +76,8 @@ class DeployCommand extends Command
 
         // Run build update
         $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
+
+        // Restarting workers
     }
 
     /**
