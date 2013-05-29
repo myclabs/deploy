@@ -5,10 +5,26 @@ Deployment scripts
 ## Usage
 
 ```bash
-deploy deploy [-v|--verbose] application version [path]
+deploy [--dry-run] [--update-db] [--restart-worker="..."] version [path]
 ```
 
-The deploy command will
+```
+Arguments:
+ version               Which version to deploy (tag or branch name).
+ path                  Path to deploy the application into. Default is the current directory. (default: "C:\\dev\\deploy")
+
+Options:
+ --dry-run             If set, do not run any command. This is appropriate for testing.
+ --update-db           If set, 'build update' will be run and the DB will be updated. If not, the user will be asked.
+ --restart-worker      If set, the given Gearman worker will be restarted. If not, the user will be asked.
+ --help (-h)           Display this help message.
+ --quiet (-q)          Do not output any message.
+ --verbose (-v)        Increase verbosity of messages.
+ --version (-V)        Display this application version.
+ --ansi                Force ANSI output.
+ --no-ansi             Disable ANSI output.
+ --no-interaction (-n) Do not ask any interactive question.
+```
 
 ## Installation
 
