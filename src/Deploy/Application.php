@@ -5,7 +5,6 @@
 
 namespace Deploy;
 
-use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Input\InputInterface;
 
 /**
@@ -13,7 +12,7 @@ use Symfony\Component\Console\Input\InputInterface;
  *
  * @see http://symfony.com/doc/current/components/console/single_command_tool.html
  */
-class DeployApplication extends Application
+class Application extends \Symfony\Component\Console\Application
 {
     /**
      * {@inheritdoc}

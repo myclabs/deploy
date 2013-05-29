@@ -4,9 +4,9 @@
  * Deploy an application
  */
 
-use Deploy\DeployApplication;
+use Deploy\Application;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$console = new DeployApplication();
+$console = new Application('Deploy script');
 $console->run();
