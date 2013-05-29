@@ -29,19 +29,25 @@ class DeployCommand extends Command
         ->addArgument(
                 'version',
                 InputArgument::REQUIRED,
-                "Which version to deploy (tag or branch name)"
+                "Which version to deploy (tag or branch name)."
             )
         ->addArgument(
                 'path',
                 InputArgument::OPTIONAL,
-                "Path to deploy the application into",
+                "Path to deploy the application into.",
                 getcwd()
             )
         ->addOption(
-                'updateDB',
+                'update-db',
                 null,
                 InputOption::VALUE_NONE,
-                "If set, 'build update' will be run and the DB will be updated"
+                "If set, 'build update' will be run and the DB will be updated. If not, the user will be asked."
+            )
+        ->addOption(
+                'dry-run',
+                null,
+                InputOption::VALUE_NONE,
+                "If set, do not run any command. This is appropriate for testing."
             );
     }
 
@@ -50,13 +56,10 @@ class DeployCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $dryRun = $input->getOption('dry-run');
         $version = $input->getArgument('version');
         $path = $input->getArgument('path');
-        if ($input->getOption('updateDB')) {
-            $forceUpdateDB = true;
-        } else {
-            $forceUpdateDB = false;
-        }
+        $forceUpdateDB = $input->getOption('update-db');
 
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
             $output->writeln("Deploying version $version to $path");
@@ -66,10 +69,20 @@ class DeployCommand extends Command
         $repository = new \PHPGit_Repository($path);
 
         // Switch to the branch/tag
-        $repository->git("checkout $version");
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: git checkout $version");
+        }
+        if (! $dryRun) {
+            $repository->git("checkout $version");
+        }
 
         // Update to head
-        $repository->git("pull");
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: git pull");
+        }
+        if (! $dryRun) {
+            $repository->git("pull");
+        }
 
         // Run Composer
         $this->runComposer($path, $input, $output);
@@ -84,11 +97,14 @@ class DeployCommand extends Command
      * Composer dependencies installation
      *
      * @param string          $path
+     * @param InputInterface  $input
      * @param OutputInterface $output
      * @throws \RuntimeException
      */
-    private function runComposer($path, OutputInterface $output)
+    private function runComposer($path, InputInterface $input, OutputInterface $output)
     {
+        $dryRun = $input->getOption('dry-run');
+
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
             $output->writeln("Updating project dependencies with Composer");
         }
@@ -97,7 +113,17 @@ class DeployCommand extends Command
         $outputArray = [];
         $returnStatus = null;
 
-        exec($command, $outputArray, $returnStatus);
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Return status: $returnStatus");
+        }
 
         // Error
         if ($returnStatus != 0) {
@@ -116,11 +142,14 @@ class DeployCommand extends Command
      *
      * @param string          $path
      * @param boolean         $forceUpdateDB
+     * @param InputInterface  $input
      * @param OutputInterface $output
      * @throws \RuntimeException
      */
-    private function runUpdateDB($path, $forceUpdateDB, OutputInterface $output)
+    private function runUpdateDB($path, $forceUpdateDB, InputInterface $input, OutputInterface $output)
     {
+        $dryRun = $input->getOption('dry-run');
+
         // If the user didn't ask to update the db, we ask him
         if (!$forceUpdateDB) {
             /** @var DialogHelper $dialog */
@@ -145,7 +174,17 @@ class DeployCommand extends Command
         $outputArray = [];
         $returnStatus = null;
 
-        exec($command, $outputArray, $returnStatus);
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Return status: $returnStatus");
+        }
 
         // Error
         if ($returnStatus != 0) {
