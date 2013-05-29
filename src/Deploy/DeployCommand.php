@@ -34,8 +34,14 @@ class DeployCommand extends Command
         ->addArgument(
                 'path',
                 InputArgument::OPTIONAL,
-                "Path to deploy the application into.",
+                "Path to deploy the application into. Default is the current directory.",
                 getcwd()
+            )
+        ->addOption(
+                'dry-run',
+                null,
+                InputOption::VALUE_NONE,
+                "If set, do not run any command. This is appropriate for testing."
             )
         ->addOption(
                 'update-db',
@@ -44,10 +50,10 @@ class DeployCommand extends Command
                 "If set, 'build update' will be run and the DB will be updated. If not, the user will be asked."
             )
         ->addOption(
-                'dry-run',
+                'restart-worker',
                 null,
-                InputOption::VALUE_NONE,
-                "If set, do not run any command. This is appropriate for testing."
+                InputOption::VALUE_REQUIRED,
+                "If set, the given Gearman worker will be restarted. If not, the user will be asked."
             );
     }
 
@@ -56,17 +62,67 @@ class DeployCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $dryRun = $input->getOption('dry-run');
         $version = $input->getArgument('version');
         $path = $input->getArgument('path');
         $forceUpdateDB = $input->getOption('update-db');
+        $worker = $input->getOption('restart-worker');
 
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-            $output->writeln("Deploying version $version to $path");
+            $output->writeln("<info>Deploying version $version to $path</info>");
         }
 
+        // Run git update
+        $returnStatus = $this->runGitUpdate($path, $version, $input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
+        // Run Composer
+        $returnStatus = $this->runComposer($path, $input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
+        // Run build update
+        $returnStatus = $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
+        // Restarting workers
+        $returnStatus = $this->restartWorker($worker, $input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
+        // Everything went fine
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("<info>Deployment success</info>");
+        }
+        return 0;
+    }
+
+    /**
+     * Update the git repository
+     *
+     * @param string          $path
+     * @param string          $version
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function runGitUpdate($path, $version, InputInterface $input, OutputInterface $output)
+    {
+        $dryRun = $input->getOption('dry-run');
+
         // Detecting git
-        $repository = new \PHPGit_Repository($path);
+        try {
+            $repository = new \PHPGit_Repository($path);
+        } catch (\InvalidGitRepositoryDirectoryException $e) {
+            $output->writeln("<error>The directory $path is not a git repository</error>");
+            return 1;
+        }
 
         // Switch to the branch/tag
         if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
@@ -84,13 +140,7 @@ class DeployCommand extends Command
             $repository->git("pull");
         }
 
-        // Run Composer
-        $this->runComposer($path, $input, $output);
-
-        // Run build update
-        $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
-
-        // Restarting workers
+        return 0;
     }
 
     /**
@@ -99,7 +149,8 @@ class DeployCommand extends Command
      * @param string          $path
      * @param InputInterface  $input
      * @param OutputInterface $output
-     * @throws \RuntimeException
+     *
+     * @return int
      */
     private function runComposer($path, InputInterface $input, OutputInterface $output)
     {
@@ -121,10 +172,6 @@ class DeployCommand extends Command
             exec($command, $outputArray, $returnStatus);
         }
 
-        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Return status: $returnStatus");
-        }
-
         // Error
         if ($returnStatus != 0) {
             /** @var FormatterHelper $formatter */
@@ -133,8 +180,10 @@ class DeployCommand extends Command
             $output->writeln("<error>Error while running Composer install</error>");
             $output->writeln("Command used: $command");
             $output->writeln($formatter->formatBlock($outputArray, 'error'));
-            throw new \RuntimeException();
+            return 1;
         }
+
+        return 0;
     }
 
     /**
@@ -144,7 +193,8 @@ class DeployCommand extends Command
      * @param boolean         $forceUpdateDB
      * @param InputInterface  $input
      * @param OutputInterface $output
-     * @throws \RuntimeException
+     *
+     * @return int
      */
     private function runUpdateDB($path, $forceUpdateDB, InputInterface $input, OutputInterface $output)
     {
@@ -162,12 +212,12 @@ class DeployCommand extends Command
             );
 
             if (!$confirmation) {
-                return;
+                return 0;
             }
         }
 
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-            $output->writeln("Running build update (Doctrine DB update)");
+            $output->writeln("Updating the database through Doctrine");
         }
 
         $command = "php $path/scripts/build/build.php update";
@@ -182,10 +232,6 @@ class DeployCommand extends Command
             exec($command, $outputArray, $returnStatus);
         }
 
-        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Return status: $returnStatus");
-        }
-
         // Error
         if ($returnStatus != 0) {
             /** @var FormatterHelper $formatter */
@@ -194,7 +240,67 @@ class DeployCommand extends Command
             $output->writeln("<error>Error while running DB update</error>");
             $output->writeln("Command used: $command");
             $output->writeln($formatter->formatBlock($outputArray, 'error'));
-            throw new \RuntimeException();
+            return 1;
         }
+
+        return 0;
+    }
+    /**
+     * Database update (Doctrine)
+     *
+     * @param string          $worker
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function restartWorker($worker, InputInterface $input, OutputInterface $output)
+    {
+        $dryRun = $input->getOption('dry-run');
+
+        // If the user didn't ask to restart a worker, we ask him
+        if (!$worker) {
+            /** @var DialogHelper $dialog */
+            $dialog = $this->getHelperSet()->get('dialog');
+
+            $worker = $dialog->ask(
+                $output,
+                '<question>Name of the Gearman worker to restart (leave empty to skip step):</question>',
+                null
+            );
+
+            if (!$worker) {
+                return 0;
+            }
+        }
+
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Restarting the Gearman worker '$worker'");
+        }
+
+        $command = "supervisorctl restart $worker";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while restarting the worker</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        return 0;
     }
 }
