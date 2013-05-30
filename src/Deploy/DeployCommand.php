@@ -125,37 +125,51 @@ class DeployCommand extends Command
         }
 
         // Switch to the branch/tag
+        $command = "cd '$path' && git fetch $version && git checkout -b $version origin/$version";
+        $outputArray = [];
+        $returnStatus = null;
+
         if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Running: git checkout $version");
+            $output->writeln("Running: $command");
         }
+
         if (! $dryRun) {
-            try {
-                $repository->git("checkout $version");
-            } catch (\GitRuntimeException $e) {
-                /** @var FormatterHelper $formatter */
-                $formatter = $this->getHelperSet()->get('formatter');
-
-                $output->writeln("<error>Error while checking out the git version</error>");
-                $output->writeln($formatter->formatBlock($e->getMessage(), 'error'));
-                return 1;
-            }
+            exec($command, $outputArray, $returnStatus);
         }
 
-        // Update to head
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while checking out the git version</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        // Switch to the branch/tag
+        $command = "cd '$path' && git pull";
+        $outputArray = [];
+        $returnStatus = null;
+
         if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Running: git pull");
+            $output->writeln("Running: $command");
         }
-        if (! $dryRun) {
-            try {
-                $repository->git("pull");
-            } catch (\GitRuntimeException $e) {
-                /** @var FormatterHelper $formatter */
-                $formatter = $this->getHelperSet()->get('formatter');
 
-                $output->writeln("<error>Error while git pull</error>");
-                $output->writeln($formatter->formatBlock($e->getMessage(), 'error'));
-                return 1;
-            }
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while pulling</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
         }
 
         return 0;
@@ -178,7 +192,7 @@ class DeployCommand extends Command
             $output->writeln("Updating project dependencies with Composer");
         }
 
-        $command = "composer install --no-dev $path";
+        $command = "cd '$path' && composer install --no-dev";
         $outputArray = [];
         $returnStatus = null;
 
@@ -238,7 +252,7 @@ class DeployCommand extends Command
             $output->writeln("Updating the database through Doctrine");
         }
 
-        $command = "php $path/scripts/build/build.php update";
+        $command = "php '$path/scripts/build/build.php' update";
         $outputArray = [];
         $returnStatus = null;
 
