@@ -129,7 +129,16 @@ class DeployCommand extends Command
             $output->writeln("Running: git checkout $version");
         }
         if (! $dryRun) {
-            $repository->git("checkout $version");
+            try {
+                $repository->git("checkout $version");
+            } catch (\GitRuntimeException $e) {
+                /** @var FormatterHelper $formatter */
+                $formatter = $this->getHelperSet()->get('formatter');
+
+                $output->writeln("<error>Error while checking out the git version</error>");
+                $output->writeln($formatter->formatBlock($e->getMessage(), 'error'));
+                return 1;
+            }
         }
 
         // Update to head
@@ -137,7 +146,16 @@ class DeployCommand extends Command
             $output->writeln("Running: git pull");
         }
         if (! $dryRun) {
-            $repository->git("pull");
+            try {
+                $repository->git("pull");
+            } catch (\GitRuntimeException $e) {
+                /** @var FormatterHelper $formatter */
+                $formatter = $this->getHelperSet()->get('formatter');
+
+                $output->writeln("<error>Error while git pull</error>");
+                $output->writeln($formatter->formatBlock($e->getMessage(), 'error'));
+                return 1;
+            }
         }
 
         return 0;
