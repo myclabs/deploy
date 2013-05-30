@@ -157,29 +157,38 @@ class DeployCommand extends Command
             return 1;
         }
 
-//        // Switch to the branch/tag
-//        $command = "cd '$path' && git pull 2>&1";
-//        $outputArray = [];
-//        $returnStatus = null;
-//
-//        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-//            $output->writeln("Running: $command");
-//        }
-//
-//        if (! $dryRun) {
-//            exec($command, $outputArray, $returnStatus);
-//        }
-//
-//        // Error
-//        if ($returnStatus != 0) {
-//            /** @var FormatterHelper $formatter */
-//            $formatter = $this->getHelperSet()->get('formatter');
-//
-//            $output->writeln("<error>Error while pulling</error>");
-//            $output->writeln("Command used: $command");
-//            $output->writeln($formatter->formatBlock($outputArray, 'error'));
-//            return 1;
-//        }
+        // If we are on a branch, merge the origin branch to update
+        if (! $dryRun) {
+            $command = "cd '$path' && git describe --tags";
+            $outputArray = [];
+            $returnStatus = null;
+            exec($command, $outputArray, $returnStatus);
+            if ($returnStatus != 0) {
+                // We are on a branch, we need to merge
+                $command = "cd '$path' && git merge origin/$version 2>&1";
+                $outputArray = [];
+                $returnStatus = null;
+
+                if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+                    $output->writeln("Running: $command");
+                }
+
+                if (! $dryRun) {
+                    exec($command, $outputArray, $returnStatus);
+                }
+
+                // Error
+                if ($returnStatus != 0) {
+                    /** @var FormatterHelper $formatter */
+                    $formatter = $this->getHelperSet()->get('formatter');
+                    $output->writeln("<error>Error while updating  out the git branch $version</error>");
+                    $output->writeln("Command used: $command");
+                    $output->writeln($formatter->formatBlock($outputArray, 'error'));
+                    return 1;
+                }
+            }
+        }
+
 
         return 0;
     }
