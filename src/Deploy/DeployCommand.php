@@ -159,7 +159,7 @@ class DeployCommand extends Command
 
         // If we are on a branch, merge the origin branch to update
         if (! $dryRun) {
-            $command = "cd '$path' && git describe --tags";
+            $command = "cd '$path' && git describe --tags 2>&1";
             $outputArray = [];
             $returnStatus = null;
             exec($command, $outputArray, $returnStatus);
