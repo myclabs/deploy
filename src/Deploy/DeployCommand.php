@@ -130,7 +130,7 @@ class DeployCommand extends Command
 
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
             $output->writeln("Checking out the $version branch or tag.");
-            $output->writeln("<question>GitHub login:</question>");
+            $output->writeln("<question>GitHub login</question>");
         }
 
         // Switch to the branch/tag
