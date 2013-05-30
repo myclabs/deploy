@@ -130,7 +130,6 @@ class DeployCommand extends Command
 
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
             $output->writeln("Checking out the $version branch or tag.");
-            $output->writeln("<question>GitHub login</question>");
         }
 
         // Switch to the branch/tag
@@ -159,7 +158,7 @@ class DeployCommand extends Command
 
         // If we are on a branch, merge the origin branch to update
         if (! $dryRun) {
-            $command = "cd '$path' && git branch | grep '*'";
+            $command = "cd '$path' && git branch | grep '^*'";
             $lastLine = exec($command);
             $isOnBranch = strpos($lastLine, '(no branch)') === false;
             if ($isOnBranch) {
