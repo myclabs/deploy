@@ -125,7 +125,7 @@ class DeployCommand extends Command
         }
 
         // Switch to the branch/tag
-        $command = "cd '$path' && git fetch origin && git checkout -b $version origin/$version";
+        $command = "cd '$path' && git fetch origin 2>&1 && git checkout -b $version origin/$version 2>&1";
         $outputArray = [];
         $returnStatus = null;
 
@@ -149,7 +149,7 @@ class DeployCommand extends Command
         }
 
         // Switch to the branch/tag
-        $command = "cd '$path' && git pull";
+        $command = "cd '$path' && git pull 2>&1";
         $outputArray = [];
         $returnStatus = null;
 
@@ -192,7 +192,7 @@ class DeployCommand extends Command
             $output->writeln("Updating project dependencies with Composer");
         }
 
-        $command = "cd '$path' && composer install --no-dev";
+        $command = "cd '$path' && composer install --no-dev 2>&1";
         $outputArray = [];
         $returnStatus = null;
 
@@ -252,7 +252,7 @@ class DeployCommand extends Command
             $output->writeln("Updating the database through Doctrine");
         }
 
-        $command = "php '$path/scripts/build/build.php' update";
+        $command = "php '$path/scripts/build/build.php' update 2>&1";
         $outputArray = [];
         $returnStatus = null;
 
@@ -310,7 +310,7 @@ class DeployCommand extends Command
             $output->writeln("Restarting the Gearman worker '$worker'");
         }
 
-        $command = "supervisorctl restart $worker";
+        $command = "supervisorctl restart $worker 2>&1";
         $outputArray = [];
         $returnStatus = null;
 
