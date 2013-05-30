@@ -26,6 +26,26 @@ Options:
  --no-interaction (-n) Do not ask any interactive question.
 ```
 
+## Examples
+
+Deploys the 2.1.0 tag:
+
+```bash
+deploy 2.1.0
+```
+
+Deploys the master branch to another path:
+
+```bash
+deploy master /home/dev/inventory
+```
+
+Deploys non-interactively (updates the DB and restarts a worker):
+
+```bash
+deploy --update-db --restart-worker inventory-worker 2.1.0
+```
+
 ## Installation
 
 Checkout the repository and install the dependencies with composer:
