@@ -72,5 +72,5 @@ sudo bin/deploy --help
 To install globally on the machine (and be able to use `deploy ...`), create a symlink:
 
 ```bash
-sudo ln -s /usr/local/bin/deploy /path/to/project/bin/deploy
+sudo ln -s /path/to/project/bin/deploy /usr/local/bin/deploy
 ```
