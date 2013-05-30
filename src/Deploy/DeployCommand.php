@@ -125,7 +125,7 @@ class DeployCommand extends Command
         }
 
         // Switch to the branch/tag
-        $command = "cd '$path' && git fetch $version && git checkout -b $version origin/$version";
+        $command = "cd '$path' && git fetch origin && git checkout -b $version origin/$version";
         $outputArray = [];
         $returnStatus = null;
 
