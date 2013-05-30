@@ -148,29 +148,29 @@ class DeployCommand extends Command
             return 1;
         }
 
-        // Switch to the branch/tag
-        $command = "cd '$path' && git pull 2>&1";
-        $outputArray = [];
-        $returnStatus = null;
-
-        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Running: $command");
-        }
-
-        if (! $dryRun) {
-            exec($command, $outputArray, $returnStatus);
-        }
-
-        // Error
-        if ($returnStatus != 0) {
-            /** @var FormatterHelper $formatter */
-            $formatter = $this->getHelperSet()->get('formatter');
-
-            $output->writeln("<error>Error while pulling</error>");
-            $output->writeln("Command used: $command");
-            $output->writeln($formatter->formatBlock($outputArray, 'error'));
-            return 1;
-        }
+//        // Switch to the branch/tag
+//        $command = "cd '$path' && git pull 2>&1";
+//        $outputArray = [];
+//        $returnStatus = null;
+//
+//        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+//            $output->writeln("Running: $command");
+//        }
+//
+//        if (! $dryRun) {
+//            exec($command, $outputArray, $returnStatus);
+//        }
+//
+//        // Error
+//        if ($returnStatus != 0) {
+//            /** @var FormatterHelper $formatter */
+//            $formatter = $this->getHelperSet()->get('formatter');
+//
+//            $output->writeln("<error>Error while pulling</error>");
+//            $output->writeln("Command used: $command");
+//            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+//            return 1;
+//        }
 
         return 0;
     }
