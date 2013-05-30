@@ -6,15 +6,8 @@
     },
 	"require": {
 		"php": ">=5.4.0",
-		"symfony/console": "2.*",
-		"ornicar/php-git-repo": "dev-master"
+		"symfony/console": "2.*"
 	},
     "minimum-stability": "dev",
-    "prefer-stable": true,
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/ornicar/php-git-repo"
-        }
-    ]
+    "prefer-stable": true
 }

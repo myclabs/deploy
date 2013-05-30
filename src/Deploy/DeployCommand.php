@@ -117,11 +117,20 @@ class DeployCommand extends Command
         $dryRun = $input->getOption('dry-run');
 
         // Detecting git
-        try {
-            $repository = new \PHPGit_Repository($path);
-        } catch (\InvalidGitRepositoryDirectoryException $e) {
+        $command = "cd '$path' && git rev-parse";
+        $outputArray = [];
+        $returnStatus = null;
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+        if ($returnStatus != 0) {
             $output->writeln("<error>The directory $path is not a git repository</error>");
             return 1;
+        }
+
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Checking out the $version branch or tag.");
+            $output->writeln("<question>GitHub login:</question>");
         }
 
         // Switch to the branch/tag
