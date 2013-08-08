@@ -15,8 +15,13 @@ Arguments:
 
 Options:
  --dry-run             If set, do not run any command. This is appropriate for testing.
+
  --update-db           If set, 'build update' will be run and the DB will be updated. If not, the user will be asked.
+ --no-update-db        If set, 'build update' will *not* be run. If not, the user will be asked.
+
  --restart-worker      If set, the given Gearman worker will be restarted. If not, the user will be asked.
+ --no-restart-worker   If set, the given Gearman worker will *not* be restarted. If not, the user will be asked.
+
  --help (-h)           Display this help message.
  --quiet (-q)          Do not output any message.
  --verbose (-v)        Increase verbosity of messages.
@@ -44,6 +49,12 @@ Deploys non-interactively (updates the DB and restarts a worker):
 
 ```bash
 deploy --update-db --restart-worker inventory-worker 2.1.0
+```
+
+Deploys non-interactively (doesn't update the DB and doesn't restart a worker):
+
+```bash
+deploy --no-update-db --no-restart-worker 2.1.0
 ```
 
 ## Installation

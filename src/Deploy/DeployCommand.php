@@ -50,10 +50,22 @@ class DeployCommand extends Command
                 "If set, 'build update' will be run and the DB will be updated. If not, the user will be asked."
             )
         ->addOption(
+                'no-update-db',
+                null,
+                InputOption::VALUE_NONE,
+                "If set, 'build update' will *not* be run. If not, the user will be asked."
+            )
+        ->addOption(
                 'restart-worker',
                 null,
                 InputOption::VALUE_REQUIRED,
                 "If set, the given Gearman worker will be restarted. If not, the user will be asked."
+            )
+        ->addOption(
+                'no-restart-worker',
+                null,
+                InputOption::VALUE_NONE,
+                "If set, the given Gearman worker will *not* be restarted. If not, the user will be asked."
             );
     }
 
@@ -65,7 +77,9 @@ class DeployCommand extends Command
         $version = $input->getArgument('version');
         $path = $input->getArgument('path');
         $forceUpdateDB = $input->getOption('update-db');
-        $worker = $input->getOption('restart-worker');
+        $forceNoUpdateDB = $input->getOption('no-update-db');
+        $forceRestartWorker = $input->getOption('restart-worker');
+        $forceNoRestartWorker = $input->getOption('no-restart-worker');
 
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
             $output->writeln("<info>Deploying version $version to $path</info>");
@@ -84,15 +98,19 @@ class DeployCommand extends Command
         }
 
         // Run build update
-        $returnStatus = $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
-        if ($returnStatus > 0) {
-            return $returnStatus;
+        if (!$forceNoUpdateDB) {
+            $returnStatus = $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
+            if ($returnStatus > 0) {
+                return $returnStatus;
+            }
         }
 
         // Restarting workers
-        $returnStatus = $this->restartWorker($worker, $input, $output);
-        if ($returnStatus > 0) {
-            return $returnStatus;
+        if (!$forceNoRestartWorker) {
+            $returnStatus = $this->restartWorker($forceRestartWorker, $input, $output);
+            if ($returnStatus > 0) {
+                return $returnStatus;
+            }
         }
 
         // Everything went fine
