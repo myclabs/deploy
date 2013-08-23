@@ -232,7 +232,7 @@ class DeployCommand extends Command
         }
 
         // Graceful restart
-        $command = "apachectl graceful";
+        $command = "/usr/sbin/apachectl graceful";
         $outputArray = [];
         $returnStatus = null;
 
