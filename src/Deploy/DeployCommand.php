@@ -91,6 +91,12 @@ class DeployCommand extends Command
             return $returnStatus;
         }
 
+        // Restart apache
+        $returnStatus = $this->restartApache($input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
         // Run Composer
         $returnStatus = $this->runComposer($path, $input, $output);
         if ($returnStatus > 0) {
@@ -147,7 +153,7 @@ class DeployCommand extends Command
         }
 
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-            $output->writeln("Checking out the $version branch or tag.");
+            $output->writeln("Checking out the $version branch or tag");
         }
 
         // Switch to the branch/tag
@@ -205,6 +211,49 @@ class DeployCommand extends Command
             }
         }
 
+
+        return 0;
+    }
+
+    /**
+     * Restart Apache to restart the APC cache
+     *
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function restartApache(InputInterface $input, OutputInterface $output)
+    {
+        $dryRun = $input->getOption('dry-run');
+
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Restarting Apache to empty APC cache");
+        }
+
+        // Graceful restart
+        $command = "apachectl graceful";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while restarting Apache</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
 
         return 0;
     }
