@@ -276,20 +276,12 @@ class DeployCommand extends Command
     {
         $dryRun = $input->getOption('dry-run');
 
-        // If the cache directory doesn't exists, skip
-        if (!is_dir($path . '/public/cache/translate')) {
-            if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-                $output->writeln("No translation cache to clear, skipping");
-            }
-            return 0;
-        }
-
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
             $output->writeln("Clearing translation cache");
         }
 
-        // Graceful restart
-        $command = "cd '$path' && rm public/cache/translate/*";
+        // Can't use "rm" directly because it errors if it doesn't find any file
+        $command = "cd '$path' && find public/cache/translate -type f -not -name '.*' -exec rm {} \\;";
         $outputArray = [];
         $returnStatus = null;
 
