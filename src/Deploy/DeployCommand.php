@@ -1,7 +1,4 @@
 <?php
-/**
- * @author matthieu.napoli
- */
 
 namespace Deploy;
 
@@ -15,6 +12,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Deploy command
+ *
+ * @author matthieu.napoli
  */
 class DeployCommand extends Command
 {
@@ -93,6 +92,12 @@ class DeployCommand extends Command
 
         // Restart apache
         $returnStatus = $this->restartApache($input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
+        // Clear translation cache
+        $returnStatus = $this->clearTranslationCache($path, $input, $output);
         if ($returnStatus > 0) {
             return $returnStatus;
         }
@@ -250,6 +255,50 @@ class DeployCommand extends Command
             $formatter = $this->getHelperSet()->get('formatter');
 
             $output->writeln("<error>Error while restarting Apache</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Clear the translation cache
+     *
+     * @param string          $path
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function clearTranslationCache($path, InputInterface $input, OutputInterface $output)
+    {
+        $dryRun = $input->getOption('dry-run');
+
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Clearing translation cache");
+        }
+
+        // Graceful restart
+        $command = "cd '$path' && rm public/cache/translate/*";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while clearing translation cache</error>");
             $output->writeln("Command used: $command");
             $output->writeln($formatter->formatBlock($outputArray, 'error'));
             return 1;

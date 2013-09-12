@@ -1,7 +1,4 @@
 <?php
-/**
- * @author matthieu.napoli
- */
 
 namespace Deploy;
 
@@ -11,6 +8,8 @@ use Symfony\Component\Console\Input\InputInterface;
  * Extending the Symfony Console Application to allow having one command only
  *
  * @see http://symfony.com/doc/current/components/console/single_command_tool.html
+ *
+ * @author matthieu.napoli
  */
 class Application extends \Symfony\Component\Console\Application
 {

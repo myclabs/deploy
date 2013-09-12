@@ -1,6 +1,6 @@
 # deploy
 
-Deployment scripts
+Deployment script.
 
 ## Usage
 
