@@ -276,6 +276,14 @@ class DeployCommand extends Command
     {
         $dryRun = $input->getOption('dry-run');
 
+        // If the cache directory doesn't exists, skip
+        if (!is_dir($path . '/public/cache/translate')) {
+            if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+                $output->writeln("No translation cache to clear, skipping");
+            }
+            return 0;
+        }
+
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
             $output->writeln("Clearing translation cache");
         }
