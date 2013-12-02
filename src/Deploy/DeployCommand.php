@@ -91,7 +91,14 @@ class DeployCommand extends Command
         }
 
         // Restart apache
+        // TODO remove once 2.8 is not installed anymore (2.9 uses Memcached)
         $returnStatus = $this->restartApache($input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
+        // Clear Memcached
+        $returnStatus = $this->restartMemcached($input, $output);
         if ($returnStatus > 0) {
             return $returnStatus;
         }
@@ -238,6 +245,49 @@ class DeployCommand extends Command
 
         // Graceful restart
         $command = "/usr/sbin/apachectl graceful";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while restarting Apache</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Restart Apache to restart the APC cache
+     *
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function restartMemcached(InputInterface $input, OutputInterface $output)
+    {
+        $dryRun = $input->getOption('dry-run');
+
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Clearing Memcached content");
+        }
+
+        // Sends "flush_all" command to memcached
+        $command = "echo 'flush_all' | netcat localhost 11211";
         $outputArray = [];
         $returnStatus = null;
 
