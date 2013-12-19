@@ -104,6 +104,7 @@ class DeployCommand extends Command
         }
 
         // Clear translation cache
+        // TODO remove once 2.10 is installed
         $returnStatus = $this->clearTranslationCache($path, $input, $output);
         if ($returnStatus > 0) {
             return $returnStatus;
