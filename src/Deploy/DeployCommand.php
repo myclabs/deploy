@@ -375,7 +375,7 @@ class DeployCommand extends Command
             $output->writeln("Updating project dependencies with Composer");
         }
 
-        $command = "cd '$path' && composer install --no-dev 2>&1";
+        $command = "cd '$path' && composer install --no-dev --optimize-autoloader 2>&1";
         $outputArray = [];
         $returnStatus = null;
 
