@@ -90,22 +90,8 @@ class DeployCommand extends Command
             return $returnStatus;
         }
 
-        // Restart apache
-        // TODO remove once 2.8 is not installed anymore (2.9 uses Memcached)
-        $returnStatus = $this->restartApache($input, $output);
-        if ($returnStatus > 0) {
-            return $returnStatus;
-        }
-
         // Clear Memcached
-        $returnStatus = $this->restartMemcached($input, $output);
-        if ($returnStatus > 0) {
-            return $returnStatus;
-        }
-
-        // Clear translation cache
-        // TODO remove once 2.10 is installed
-        $returnStatus = $this->clearTranslationCache($path, $input, $output);
+        $returnStatus = $this->clearMemcached($input, $output);
         if ($returnStatus > 0) {
             return $returnStatus;
         }
@@ -229,57 +215,14 @@ class DeployCommand extends Command
     }
 
     /**
-     * Restart Apache to restart the APC cache
+     * Clear Memcached
      *
      * @param InputInterface  $input
      * @param OutputInterface $output
      *
      * @return int
      */
-    private function restartApache(InputInterface $input, OutputInterface $output)
-    {
-        $dryRun = $input->getOption('dry-run');
-
-        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-            $output->writeln("Restarting Apache to empty APC cache");
-        }
-
-        // Graceful restart
-        $command = "/usr/sbin/apachectl graceful";
-        $outputArray = [];
-        $returnStatus = null;
-
-        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Running: $command");
-        }
-
-        if (! $dryRun) {
-            exec($command, $outputArray, $returnStatus);
-        }
-
-        // Error
-        if ($returnStatus != 0) {
-            /** @var FormatterHelper $formatter */
-            $formatter = $this->getHelperSet()->get('formatter');
-
-            $output->writeln("<error>Error while restarting Apache</error>");
-            $output->writeln("Command used: $command");
-            $output->writeln($formatter->formatBlock($outputArray, 'error'));
-            return 1;
-        }
-
-        return 0;
-    }
-
-    /**
-     * Restart Apache to restart the APC cache
-     *
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
-    private function restartMemcached(InputInterface $input, OutputInterface $output)
+    private function clearMemcached(InputInterface $input, OutputInterface $output)
     {
         $dryRun = $input->getOption('dry-run');
 
@@ -306,50 +249,6 @@ class DeployCommand extends Command
             $formatter = $this->getHelperSet()->get('formatter');
 
             $output->writeln("<error>Error while restarting Apache</error>");
-            $output->writeln("Command used: $command");
-            $output->writeln($formatter->formatBlock($outputArray, 'error'));
-            return 1;
-        }
-
-        return 0;
-    }
-
-    /**
-     * Clear the translation cache
-     *
-     * @param string          $path
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
-    private function clearTranslationCache($path, InputInterface $input, OutputInterface $output)
-    {
-        $dryRun = $input->getOption('dry-run');
-
-        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-            $output->writeln("Clearing translation cache");
-        }
-
-        // Can't use "rm" directly because it errors if it doesn't find any file
-        $command = "cd '$path' && find public/cache/translate -type f -not -name '.*' -exec rm {} \\;";
-        $outputArray = [];
-        $returnStatus = null;
-
-        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Running: $command");
-        }
-
-        if (! $dryRun) {
-            exec($command, $outputArray, $returnStatus);
-        }
-
-        // Error
-        if ($returnStatus != 0) {
-            /** @var FormatterHelper $formatter */
-            $formatter = $this->getHelperSet()->get('formatter');
-
-            $output->writeln("<error>Error while clearing translation cache</error>");
             $output->writeln("Command used: $command");
             $output->writeln($formatter->formatBlock($outputArray, 'error'));
             return 1;
