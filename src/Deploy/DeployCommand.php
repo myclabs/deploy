@@ -90,23 +90,38 @@ class DeployCommand extends Command
             return $returnStatus;
         }
 
-        // Clear Memcached
-        $returnStatus = $this->clearMemcached($input, $output);
-        if ($returnStatus > 0) {
-            return $returnStatus;
-        }
-
         // Run Composer
         $returnStatus = $this->runComposer($path, $input, $output);
         if ($returnStatus > 0) {
             return $returnStatus;
         }
 
-        // Run build update
-        if (!$forceNoUpdateDB) {
-            $returnStatus = $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
+        // >= 2.11
+        if (file_exists($path . '/bin/inventory')) {
+            // Clear cache
+            $returnStatus = $this->clearCache($path, $input, $output);
             if ($returnStatus > 0) {
                 return $returnStatus;
+            }
+            // Update DB
+            if (!$forceNoUpdateDB) {
+                $returnStatus = $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
+                if ($returnStatus > 0) {
+                    return $returnStatus;
+                }
+            }
+        } else {
+            // Clear Memcached
+            $returnStatus = $this->clearMemcached($input, $output);
+            if ($returnStatus > 0) {
+                return $returnStatus;
+            }
+            // Run build update
+            if (!$forceNoUpdateDB) {
+                $returnStatus = $this->runDoctrineUpdate($path, $forceUpdateDB, $input, $output);
+                if ($returnStatus > 0) {
+                    return $returnStatus;
+                }
             }
         }
 
@@ -215,49 +230,6 @@ class DeployCommand extends Command
     }
 
     /**
-     * Clear Memcached
-     *
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
-    private function clearMemcached(InputInterface $input, OutputInterface $output)
-    {
-        $dryRun = $input->getOption('dry-run');
-
-        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-            $output->writeln("Clearing Memcached content");
-        }
-
-        // Sends "flush_all" command to memcached
-        $command = "echo 'flush_all' | netcat localhost 11211";
-        $outputArray = [];
-        $returnStatus = null;
-
-        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Running: $command");
-        }
-
-        if (! $dryRun) {
-            exec($command, $outputArray, $returnStatus);
-        }
-
-        // Error
-        if ($returnStatus != 0) {
-            /** @var FormatterHelper $formatter */
-            $formatter = $this->getHelperSet()->get('formatter');
-
-            $output->writeln("<error>Error while restarting Apache</error>");
-            $output->writeln("Command used: $command");
-            $output->writeln($formatter->formatBlock($outputArray, 'error'));
-            return 1;
-        }
-
-        return 0;
-    }
-
-    /**
      * Composer dependencies installation
      *
      * @param string          $path
@@ -301,7 +273,93 @@ class DeployCommand extends Command
     }
 
     /**
-     * Database update (Doctrine)
+     * Clear cache
+     *
+     * @param string          $path
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function clearCache($path, InputInterface $input, OutputInterface $output)
+    {
+        $dryRun = $input->getOption('dry-run');
+
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Clearing the caches");
+        }
+
+        $command = "$path/bin/inventory cache:clear 2>&1";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while clearing the cache</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Clear Memcached
+     *
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function clearMemcached(InputInterface $input, OutputInterface $output)
+    {
+        $dryRun = $input->getOption('dry-run');
+
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Clearing Memcached content");
+        }
+
+        // Sends "flush_all" command to memcached
+        $command = "echo 'flush_all' | netcat localhost 11211";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while clearing Memcached</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Database update
      *
      * @param string          $path
      * @param boolean         $forceUpdateDB
@@ -311,6 +369,66 @@ class DeployCommand extends Command
      * @return int
      */
     private function runUpdateDB($path, $forceUpdateDB, InputInterface $input, OutputInterface $output)
+    {
+        $dryRun = $input->getOption('dry-run');
+
+        // If the user didn't ask to update the db, we ask him
+        if (!$forceUpdateDB) {
+            /** @var DialogHelper $dialog */
+            $dialog = $this->getHelperSet()->get('dialog');
+
+            $confirmation = $dialog->askConfirmation(
+                $output,
+                '<question>Update the database?</question>',
+                false
+            );
+
+            if (!$confirmation) {
+                return 0;
+            }
+        }
+
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Updating the database");
+        }
+
+        $command = "$path/bin/inventory db:update 2>&1";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while updating the database</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Database update (Doctrine)
+     *
+     * @param string          $path
+     * @param boolean         $forceUpdateDB
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function runDoctrineUpdate($path, $forceUpdateDB, InputInterface $input, OutputInterface $output)
     {
         $dryRun = $input->getOption('dry-run');
 
@@ -359,8 +477,9 @@ class DeployCommand extends Command
 
         return 0;
     }
+
     /**
-     * Database update (Doctrine)
+     * Restart the worker
      *
      * @param string          $worker
      * @param InputInterface  $input
