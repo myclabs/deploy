@@ -96,32 +96,23 @@ class DeployCommand extends Command
             return $returnStatus;
         }
 
-        // >= 2.11
-        if (file_exists($path . '/bin/inventory')) {
-            // Clear cache
-            $returnStatus = $this->clearCache($path, $input, $output);
+        // Clear Memcached
+        // temporary fix
+        $returnStatus = $this->clearMemcached($input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+        // Clear cache
+        $returnStatus = $this->clearCache($path, $input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
+        // Update DB
+        if (!$forceNoUpdateDB) {
+            $returnStatus = $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
             if ($returnStatus > 0) {
                 return $returnStatus;
-            }
-            // Update DB
-            if (!$forceNoUpdateDB) {
-                $returnStatus = $this->runUpdateDB($path, $forceUpdateDB, $input, $output);
-                if ($returnStatus > 0) {
-                    return $returnStatus;
-                }
-            }
-        } else {
-            // Clear Memcached
-            $returnStatus = $this->clearMemcached($input, $output);
-            if ($returnStatus > 0) {
-                return $returnStatus;
-            }
-            // Run build update
-            if (!$forceNoUpdateDB) {
-                $returnStatus = $this->runDoctrineUpdate($path, $forceUpdateDB, $input, $output);
-                if ($returnStatus > 0) {
-                    return $returnStatus;
-                }
             }
         }
 
@@ -410,66 +401,6 @@ class DeployCommand extends Command
             $formatter = $this->getHelperSet()->get('formatter');
 
             $output->writeln("<error>Error while updating the database</error>");
-            $output->writeln("Command used: $command");
-            $output->writeln($formatter->formatBlock($outputArray, 'error'));
-            return 1;
-        }
-
-        return 0;
-    }
-
-    /**
-     * Database update (Doctrine)
-     *
-     * @param string          $path
-     * @param boolean         $forceUpdateDB
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
-    private function runDoctrineUpdate($path, $forceUpdateDB, InputInterface $input, OutputInterface $output)
-    {
-        $dryRun = $input->getOption('dry-run');
-
-        // If the user didn't ask to update the db, we ask him
-        if (!$forceUpdateDB) {
-            /** @var DialogHelper $dialog */
-            $dialog = $this->getHelperSet()->get('dialog');
-
-            $confirmation = $dialog->askConfirmation(
-                $output,
-                '<question>Run build update to update Database?</question>',
-                false
-            );
-
-            if (!$confirmation) {
-                return 0;
-            }
-        }
-
-        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-            $output->writeln("Updating the database through Doctrine");
-        }
-
-        $command = "php '$path/scripts/build/build.php' update 2>&1";
-        $outputArray = [];
-        $returnStatus = null;
-
-        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
-            $output->writeln("Running: $command");
-        }
-
-        if (! $dryRun) {
-            exec($command, $outputArray, $returnStatus);
-        }
-
-        // Error
-        if ($returnStatus != 0) {
-            /** @var FormatterHelper $formatter */
-            $formatter = $this->getHelperSet()->get('formatter');
-
-            $output->writeln("<error>Error while running DB update</error>");
             $output->writeln("Command used: $command");
             $output->writeln($formatter->formatBlock($outputArray, 'error'));
             return 1;
