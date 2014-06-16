@@ -96,6 +96,12 @@ class DeployCommand extends Command
             return $returnStatus;
         }
 
+        // Run Grunt
+        $returnStatus = $this->runGrunt($path, $input, $output);
+        if ($returnStatus > 0) {
+            return $returnStatus;
+        }
+
         // Clear Memcached
         // temporary fix
         $returnStatus = $this->clearMemcached($input, $output);
@@ -234,7 +240,7 @@ class DeployCommand extends Command
         $dryRun = $input->getOption('dry-run');
 
         if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
-            $output->writeln("Updating project dependencies with Composer");
+            $output->writeln("Installing project dependencies with Composer");
         }
 
         $command = "cd '$path' && composer install --no-dev --optimize-autoloader 2>&1";
@@ -255,6 +261,110 @@ class DeployCommand extends Command
             $formatter = $this->getHelperSet()->get('formatter');
 
             $output->writeln("<error>Error while running Composer install</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /**
+     * JS & CSS dependencies installation
+     *
+     * @param string          $path
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int
+     */
+    private function runGrunt($path, InputInterface $input, OutputInterface $output)
+    {
+        if (! file_exists($path . '/Gruntfile.js')) {
+            return 0;
+        }
+
+        $dryRun = $input->getOption('dry-run');
+
+        // NPM
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Installing project dependencies with npm");
+        }
+
+        $command = "cd '$path' && npm install 2>&1";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while running npm install</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        // Bower
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Installing project dependencies with Bower");
+        }
+
+        $command = "cd '$path' && bower install --allow-root 2>&1";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while running Bower install</error>");
+            $output->writeln("Command used: $command");
+            $output->writeln($formatter->formatBlock($outputArray, 'error'));
+            return 1;
+        }
+
+        // Grunt
+        if (OutputInterface::VERBOSITY_NORMAL <= $output->getVerbosity()) {
+            $output->writeln("Running Grunt");
+        }
+
+        $command = "cd '$path' && grunt 2>&1";
+        $outputArray = [];
+        $returnStatus = null;
+
+        if (OutputInterface::VERBOSITY_VERBOSE <= $output->getVerbosity()) {
+            $output->writeln("Running: $command");
+        }
+
+        if (! $dryRun) {
+            exec($command, $outputArray, $returnStatus);
+        }
+
+        // Error
+        if ($returnStatus != 0) {
+            /** @var FormatterHelper $formatter */
+            $formatter = $this->getHelperSet()->get('formatter');
+
+            $output->writeln("<error>Error while running Grunt</error>");
             $output->writeln("Command used: $command");
             $output->writeln($formatter->formatBlock($outputArray, 'error'));
             return 1;
