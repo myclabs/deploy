@@ -195,7 +195,7 @@ class DeployCommand extends Command
         if (! $dryRun) {
             $command = "cd '$path' && git branch | grep '^*'";
             $lastLine = exec($command);
-            $isOnBranch = strpos($lastLine, '(no branch)') === false;
+            $isOnBranch = strpos($lastLine, '(no branch)') === false && strpos($lastLine, '(detached from ') === false;
             if ($isOnBranch) {
                 // We are on a branch, we need to merge
                 $command = "cd '$path' && git merge origin/$version 2>&1";
